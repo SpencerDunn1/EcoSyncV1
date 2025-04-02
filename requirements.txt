@@ -3,4 +3,4 @@ uvicorn
 paho-mqtt
 sqlalchemy
 psycopg2-binary
-
+itsdangerous
