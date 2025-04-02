@@ -1,3 +1,4 @@
+
 from sqlalchemy import Column, Integer, Float, String, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from datetime import datetime
@@ -30,8 +31,16 @@ class BreakerAction(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     breaker_id = Column(Integer, ForeignKey("breakers.id"))
-    action = Column(String)  # 'on' or 'off'
-    source = Column(String)  # 'manual', 'solar', etc.
+    action = Column(String)
+    source = Column(String)
     timestamp = Column(DateTime, default=datetime.utcnow)
 
     breaker = relationship("Breaker", back_populates="actions")
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, unique=True, nullable=False, index=True)
+    hashed_password = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)

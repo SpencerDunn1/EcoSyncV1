@@ -1,0 +1,34 @@
+{
+    "sqltools.connections": [
+        {
+            "pgOptions": {
+                "ssl": {
+                    "rejectUnauthorized": true,
+                    "ca": "-----BEGIN CERTIFICATE----- MIIETTCCArWgAwIBAgIUGp3pw0c75g6u9dta7SSEdlwCgaMwDQYJKoZIhvcNAQEM BQAwQDE+MDwGA1UEAww1MDU0N2NhN2UtODlkZS00OWY1LWExNDEtNjY3OTk3YmU1 MzZkIEdFTiAxIFByb2plY3QgQ0EwHhcNMjUwMzAzMTkzNzUwWhcNMzUwMzAxMTkz NzUwWjBAMT4wPAYDVQQDDDUwNTQ3Y2E3ZS04OWRlLTQ5ZjUtYTE0MS02Njc5OTdi ZTUzNmQgR0VOIDEgUHJvamVjdCBDQTCCAaIwDQYJKoZIhvcNAQEBBQADggGPADCC AYoCggGBAKrODrE4Oh6Ga6aArtXUM3nxxwa7ZMFRC6IXERcdT/tRKxnPT+V0eq/Z 9BRogC5A0zJwgTFrspKjhGRklJFLzQO59+LPDVN1khYqXpjnqSkO981H23l9s/UB vHb9gdP+t09TNqxSrVOrAj1UJXfBMhz00bxw4lggbxL90HxKwaXvvDT5hf/5yuLk jhsV/wk+Pw+Kxmym2kFh04GBHgBlzxx3QLNoXDaVu7fSONDHE823/SJEDqG21tRg HZ0/AK2F7tV37YNeOdIz/k70S5HCYmkCW7usaH9PicaIFDP9iIVX5X8kwTxIkcFe iuh6rAPf34CAGDpIazvDyPgyaxzonzqAYnW9/mRNixpcHaEsYT9uGRAKRp7dJG+k Xd1OkBAmPcfyqPi4dqph7y0MJNXoS2tux2Ah6GirZ+93jVJJ5zowF9KODmW9KU2b lU0gVh92ub2r/juyRoDtQoPSp9gdkWH4LiBYT0SP6/0a7l/REZ06hRWx5xsXvbaB t9Ro7NHsXwIDAQABoz8wPTAdBgNVHQ4EFgQU3beXMUUoS6qGdrIJgqEUC9zepaQw DwYDVR0TBAgwBgEB/wIBADALBgNVHQ8EBAMCAQYwDQYJKoZIhvcNAQEMBQADggGB AIRd/Mdahchtpa1ysIRgR90Ru6gvQG1mDK5HqSa47H6VByTzDfyNgZN4dx0oktxf Kvn3T6OIxVDuVCYT8hRmUtrMsQFeZPmUK+EQtEd+Hf4ghUEW0nJRRlKhAsOh48sM 91hL6843+sH+qjiqxN2sLp0WvIhcnWI78dy+XhaL7GOdol3fkymC/aB+CHw2NkgX qcuCNH6z8JnErVXCbZznuW8Ne0XerWyd8e1smzKQyykyLSYzJymWD4dw0TaWurrk JQGCusfMjrRYL2Goy4aCrS4z0iSnrRVgBDpxlY0hAEfQg1IBO4la+ScMuztorgqr Tds6PCr9C0oNPWl1XnWQbdjwi7IhBR/4a+4of9njsDKwuUvk7KoPCs0DFLS+m4+L xPfXiMX7rONxNFhrjVd291waAc8hpkbpq/jamZQoZpYkXXzjdqd73T44wrDONu/f rATfds1Ql2z/V5zCGCgpDX6sxnqsKyXgzrLsbsNifWNUa7EX16lO4tCiBiVJ/jLd yw== -----END CERTIFICATE-----"
+                }
+            },
+            "previewLimit": 50,
+            "server": "ecosyncv1-spencertest.f.aivencloud.com",
+            "port": 25905,
+            "askForPassword": true,
+            "driver": "PostgreSQL",
+            "name": "First Connection",
+            "database": "defaultdb",
+            "username": "avnadmin"
+        },
+        {
+            "pgOptions": {
+                "ssl": {
+                    "rejectUnauthorized": false
+                }
+            },
+            "previewLimit": 50,
+            "server": "ecosyncv1-spencertest.f.aivencloud.com",
+            "port": 25905,
+            "driver": "PostgreSQL",
+            "name": "Aiven Postgres",
+            "database": "defaultdb",
+            "username": "avnadmin"
+        }
+    ]
+}

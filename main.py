@@ -1,7 +1,9 @@
-from fastapi import FastAPI, Header, HTTPException, Depends
+from fastapi import FastAPI, Header, HTTPException, Depends, Request
 import paho.mqtt.publish as publish
 import paho.mqtt.client as mqtt
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.middleware.sessions import SessionMiddleware
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 import json
 import os
@@ -9,8 +11,19 @@ import threading
 
 from db import get_db, SessionLocal
 from models import PowerReading, BreakerAction
+from auth import get_current_user
+from users import router as user_router
 
 app = FastAPI()
+
+# Add secure session middleware for login handling
+app.add_middleware(SessionMiddleware, secret_key="supersecretkey")
+
+# Mount static folder if needed (e.g., for JS/CSS/images)
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# Include auth routes for login, signup, logout
+app.include_router(user_router)
 
 API_KEY = os.getenv("API_KEY", "supersecurekey")
 MQTT_HOST = os.getenv("MQTT_HOST", "100.x.x.x")
@@ -54,15 +67,22 @@ def start_mqtt_listener():
     client.subscribe(MQTT_TOPIC_STATUS)
     client.loop_start()
 
-#mqtt_thread = threading.Thread(target=start_mqtt_listener, daemon=True)
-#mqtt_thread.start()
+# Uncomment this to enable MQTT connection after setup
+# mqtt_thread = threading.Thread(target=start_mqtt_listener, daemon=True)
+# mqtt_thread.start()
 
 def verify_token(x_api_key: str):
     if x_api_key != API_KEY:
         raise HTTPException(status_code=403, detail="Invalid API Key")
 
 @app.get("/", response_class=HTMLResponse)
-def serve_index():
+def root():
+    return RedirectResponse(url="/login")
+
+@app.get("/dashboard", response_class=HTMLResponse)
+def dashboard(request: Request, user: str = Depends(get_current_user)):
+    if not user:
+        return RedirectResponse(url="/login")
     with open("index.html", "r") as file:
         return HTMLResponse(content=file.read(), status_code=200)
 
