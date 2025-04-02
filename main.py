@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Header, HTTPException
+from fastapi.responses import HTMLResponse
 import paho.mqtt.publish as publish
 import json
 import os
@@ -15,6 +16,12 @@ MQTT_TOPIC = "shellyplus1pm/rpc"  # Topic the Shelly device subscribes to
 def verify_token(x_api_key: str):
     if x_api_key != API_KEY:
         raise HTTPException(status_code=403, detail="Invalid API Key")
+
+@app.get("/", response_class=HTMLResponse)
+def serve_index():
+    with open("index.html", "r") as file:
+        html_content = file.read()
+    return HTMLResponse(content=html_content, status_code=200)
 
 # Endpoint to turn ON the breaker
 @app.post("/breaker/on")
@@ -51,3 +58,6 @@ def turn_off(x_api_key: str = Header(...)):
         port=MQTT_PORT
     )
     return {"status": "sent_off"}
+
+
+
