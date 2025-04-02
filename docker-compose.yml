@@ -1,0 +1,11 @@
+version: "3.9"
+
+services:
+  smart-breaker:
+    build: .
+    ports:
+      - "10000:10000"
+    environment:
+      API_KEY: supersecurekey
+      MQTT_HOST: 100.x.x.x   # Replace with Tailscale IP
+      MQTT_PORT: 1883
