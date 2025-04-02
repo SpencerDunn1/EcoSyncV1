@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Smart Breaker Control</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      padding: 50px;
+      background-color: #f8f9fa;
+    }
+    h1 {
+      margin-bottom: 20px;
+    }
+    button {
+      padding: 15px 30px;
+      margin: 10px;
+      font-size: 18px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .on { background-color: #28a745; color: white; }
+    .off { background-color: #dc3545; color: white; }
+  </style>
+</head>
+<body>
+
+  <h1>Smart Breaker Control</h1>
+
+  <button class="on" onclick="toggleBreaker(true)">Turn ON</button>
+  <button class="off" onclick="toggleBreaker(false)">Turn OFF</button>
+
+  <p id="status" style="margin-top: 30px; font-size: 16px; color: #333;"></p>
+
+  <script>
+    const API_KEY = "supersecurekey";  // Match this with your backend config
+    const BACKEND_URL = "https://your-backend.onrender.com";  // Replace with your actual backend URL
+
+    async function toggleBreaker(turnOn) {
+      const endpoint = `${BACKEND_URL}/breaker/${turnOn ? "on" : "off"}`;
+
+      try {
+        const res = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "x-api-key": API_KEY
+          }
+        });
+
+        const data = await res.json();
+        document.getElementById("status").innerText = "Breaker: " + data.status;
+      } catch (err) {
+        document.getElementById("status").innerText = "Error: " + err;
+      }
+    }
+  </script>
+
+</body>
+</html>
