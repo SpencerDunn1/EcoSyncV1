@@ -3,23 +3,66 @@
 <head>
   <meta charset="UTF-8">
   <title>Smart Breaker Control</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    body { font-family: sans-serif; text-align: center; padding: 50px; background-color: #f8f9fa; }
-    h1 { margin-bottom: 20px; }
-    button { padding: 15px 30px; margin: 10px; font-size: 18px; border: none; border-radius: 8px; cursor: pointer; }
+    body {
+      font-family: sans-serif;
+      background-color: #f8f9fa;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 50px;
+    }
+    h1 {
+      margin-bottom: 20px;
+    }
+    .controls {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+    button {
+      padding: 15px 30px;
+      font-size: 18px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
     .on { background-color: #28a745; color: white; }
     .off { background-color: #dc3545; color: white; }
-    #dashboard { margin-top: 40px; text-align: left; display: inline-block; background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-    #dashboard h2 { margin-bottom: 10px; }
-    #dashboard p { margin: 5px 0; }
+    #status {
+      margin-bottom: 30px;
+      font-size: 16px;
+      color: #333;
+    }
+    #dashboard {
+      text-align: left;
+      background: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      margin-bottom: 40px;
+      width: 300px;
+    }
+    #dashboard h2 {
+      margin-bottom: 10px;
+    }
+    #dashboard p {
+      margin: 5px 0;
+    }
+    #chart-container {
+      width: 90%;
+      max-width: 800px;
+    }
   </style>
 </head>
 <body>
   <h1>Smart Breaker Control</h1>
-  <button class="on" onclick="toggleBreaker(true)">Turn ON</button>
-  <button class="off" onclick="toggleBreaker(false)">Turn OFF</button>
-
-  <p id="status" style="margin-top: 30px; font-size: 16px; color: #333;"></p>
+  <div class="controls">
+    <button class="on" onclick="toggleBreaker(true)">Turn ON</button>
+    <button class="off" onclick="toggleBreaker(false)">Turn OFF</button>
+  </div>
+  <p id="status"></p>
 
   <div id="dashboard">
     <h2>Live Breaker Status</h2>
@@ -29,16 +72,43 @@
     <p><strong>Current:</strong> <span id="current">-</span> A</p>
   </div>
 
+  <div id="chart-container">
+    <h2>Power Usage (Last 24 Hours)</h2>
+    <canvas id="powerChart"></canvas>
+  </div>
+
   <script>
     const API_KEY = "supersecurekey";
     const BACKEND_URL = "https://your-backend.onrender.com";
+    const chartLabels = [];
+    const chartData = [];
+
+    const powerChart = new Chart(document.getElementById('powerChart'), {
+      type: 'line',
+      data: {
+        labels: chartLabels,
+        datasets: [{
+          label: 'Power (W)',
+          data: chartData,
+          borderColor: 'rgb(75, 192, 192)',
+          tension: 0.3,
+          fill: false,
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: true } },
+        scales: {
+          x: { title: { display: true, text: 'Time' } },
+          y: { title: { display: true, text: 'Power (W)' }, beginAtZero: true }
+        }
+      }
+    });
 
     function toggleBreaker(turnOn) {
       fetch(`${BACKEND_URL}/breaker/${turnOn ? 'on' : 'off'}`, {
         method: "POST",
-        headers: {
-          "x-api-key": API_KEY
-        }
+        headers: { "x-api-key": API_KEY }
       })
       .then(res => res.json())
       .then(data => document.getElementById("status").innerText = "Breaker: " + data.status)
@@ -47,9 +117,7 @@
 
     function updateStatus() {
       fetch(`${BACKEND_URL}/breaker/status`, {
-        headers: {
-          "x-api-key": API_KEY
-        }
+        headers: { "x-api-key": API_KEY }
       })
       .then(res => res.json())
       .then(data => {
@@ -57,12 +125,23 @@
         document.getElementById("power").innerText = data.apower?.toFixed(1) || "-";
         document.getElementById("voltage").innerText = data.voltage?.toFixed(1) || "-";
         document.getElementById("current").innerText = data.current?.toFixed(2) || "-";
+
+        const now = new Date();
+        const timeLabel = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
+        chartLabels.push(timeLabel);
+        chartData.push(data.apower);
+
+        if (chartLabels.length > 288) {  // roughly 24 hours if polled every 5 mins
+          chartLabels.shift();
+          chartData.shift();
+        }
+        powerChart.update();
       })
       .catch(err => console.error("Status fetch error:", err));
     }
 
-    setInterval(updateStatus, 5000);
-    updateStatus(); // initial fetch
+    setInterval(updateStatus, 300000); // update every 5 minutes
+    updateStatus();
   </script>
 </body>
 </html>
