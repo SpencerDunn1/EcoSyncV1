@@ -4,3 +4,7 @@ paho-mqtt
 sqlalchemy
 psycopg2-binary
 itsdangerous
+passlib[bcrypt]
+python-multipart
+
+
