@@ -4,58 +4,65 @@
   <meta charset="UTF-8">
   <title>Smart Breaker Control</title>
   <style>
-    body {
-      font-family: sans-serif;
-      text-align: center;
-      padding: 50px;
-      background-color: #f8f9fa;
-    }
-    h1 {
-      margin-bottom: 20px;
-    }
-    button {
-      padding: 15px 30px;
-      margin: 10px;
-      font-size: 18px;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-    }
+    body { font-family: sans-serif; text-align: center; padding: 50px; background-color: #f8f9fa; }
+    h1 { margin-bottom: 20px; }
+    button { padding: 15px 30px; margin: 10px; font-size: 18px; border: none; border-radius: 8px; cursor: pointer; }
     .on { background-color: #28a745; color: white; }
     .off { background-color: #dc3545; color: white; }
+    #dashboard { margin-top: 40px; text-align: left; display: inline-block; background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    #dashboard h2 { margin-bottom: 10px; }
+    #dashboard p { margin: 5px 0; }
   </style>
 </head>
 <body>
-
   <h1>Smart Breaker Control</h1>
-
   <button class="on" onclick="toggleBreaker(true)">Turn ON</button>
   <button class="off" onclick="toggleBreaker(false)">Turn OFF</button>
 
   <p id="status" style="margin-top: 30px; font-size: 16px; color: #333;"></p>
 
+  <div id="dashboard">
+    <h2>Live Breaker Status</h2>
+    <p><strong>State:</strong> <span id="relay-state">Loading...</span></p>
+    <p><strong>Power:</strong> <span id="power">-</span> W</p>
+    <p><strong>Voltage:</strong> <span id="voltage">-</span> V</p>
+    <p><strong>Current:</strong> <span id="current">-</span> A</p>
+  </div>
+
   <script>
-    const API_KEY = "supersecurekey";  // Match this with your backend config
-    const BACKEND_URL = "https://ecosyncv1.onrender.com";  // Replace with your actual backend URL
+    const API_KEY = "supersecurekey";
+    const BACKEND_URL = "https://your-backend.onrender.com";
 
-    async function toggleBreaker(turnOn) {
-      const endpoint = `${BACKEND_URL}/breaker/${turnOn ? "on" : "off"}`;
-
-      try {
-        const res = await fetch(endpoint, {
-          method: "POST",
-          headers: {
-            "x-api-key": API_KEY
-          }
-        });
-
-        const data = await res.json();
-        document.getElementById("status").innerText = "Breaker: " + data.status;
-      } catch (err) {
-        document.getElementById("status").innerText = "Error: " + err;
-      }
+    function toggleBreaker(turnOn) {
+      fetch(`${BACKEND_URL}/breaker/${turnOn ? 'on' : 'off'}`, {
+        method: "POST",
+        headers: {
+          "x-api-key": API_KEY
+        }
+      })
+      .then(res => res.json())
+      .then(data => document.getElementById("status").innerText = "Breaker: " + data.status)
+      .catch(err => document.getElementById("status").innerText = "Error: " + err);
     }
-  </script>
 
+    function updateStatus() {
+      fetch(`${BACKEND_URL}/breaker/status`, {
+        headers: {
+          "x-api-key": API_KEY
+        }
+      })
+      .then(res => res.json())
+      .then(data => {
+        document.getElementById("relay-state").innerText = data.output ? "ON" : "OFF";
+        document.getElementById("power").innerText = data.apower?.toFixed(1) || "-";
+        document.getElementById("voltage").innerText = data.voltage?.toFixed(1) || "-";
+        document.getElementById("current").innerText = data.current?.toFixed(2) || "-";
+      })
+      .catch(err => console.error("Status fetch error:", err));
+    }
+
+    setInterval(updateStatus, 5000);
+    updateStatus(); // initial fetch
+  </script>
 </body>
 </html>
