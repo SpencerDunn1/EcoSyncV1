@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Header, HTTPException
 import paho.mqtt.publish as publish
 import paho.mqtt.client as mqtt
+from fastapi.responses import HTMLResponse
 import json
 import os
 import threading
@@ -43,6 +44,12 @@ mqtt_thread.start()
 def verify_token(x_api_key: str):
     if x_api_key != API_KEY:
         raise HTTPException(status_code=403, detail="Invalid API Key")
+
+@app.get("/", response_class=HTMLResponse)
+def serve_index():
+    with open("index.html", "r") as file:
+        html_content = file.read()
+    return HTMLResponse(content=html_content, status_code=200)
 
 # 🔌 Turn ON breaker
 @app.post("/breaker/on")
