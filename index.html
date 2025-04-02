@@ -156,6 +156,18 @@
         margin: 1rem 0;
       }
     }
+    .chart-container {
+      position: relative;
+      height: 300px;
+      width: 100%;
+      margin-top: 1rem;
+    }
+
+    @media (max-width: 640px) {
+      .chart-container {
+        height: 200px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -189,9 +201,12 @@
         <span id="current-0">-</span> A
       </div>
     </div>
-    <canvas id="powerChart-0" height="100"></canvas>
+    <div class="chart-container">
+      <canvas id="powerChart-0"></canvas>
+    </div>
   </div>
 
+  <!-- Second breaker section -->
   <div class="breaker-section" id="breaker-1">
     <h2>Breaker 2</h2>
     <div class="controls">
@@ -216,7 +231,9 @@
         <span id="current-1">-</span> A
       </div>
     </div>
-    <canvas id="powerChart-1" height="100"></canvas>
+    <div class="chart-container">
+      <canvas id="powerChart-1"></canvas>
+    </div>
   </div>
 
   <script>
@@ -255,7 +272,8 @@
         },
         options: {
           responsive: true,
-          maintainAspectRatio: false,
+          maintainAspectRatio: true,
+          aspectRatio: 2,
           plugins: {
             legend: {
               labels: {
