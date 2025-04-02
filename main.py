@@ -54,8 +54,8 @@ def start_mqtt_listener():
     client.subscribe(MQTT_TOPIC_STATUS)
     client.loop_start()
 
-mqtt_thread = threading.Thread(target=start_mqtt_listener, daemon=True)
-mqtt_thread.start()
+#mqtt_thread = threading.Thread(target=start_mqtt_listener, daemon=True)
+#mqtt_thread.start()
 
 def verify_token(x_api_key: str):
     if x_api_key != API_KEY:
