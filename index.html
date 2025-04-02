@@ -2,43 +2,167 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Smart Breaker Dashboard</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
+    :root {
+      --primary-color: #2563eb;
+      --success-color: #22c55e;
+      --danger-color: #ef4444;
+      --background-color: #f8f9fa;
+      --card-background: #ffffff;
+      --text-color: #1f2937;
+      --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    }
+
+    [data-theme="dark"] {
+      --background-color: #1f2937;
+      --card-background: #374151;
+      --text-color: #f3f4f6;
+      --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.3);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
     body {
-      font-family: sans-serif;
-      background-color: #f8f9fa;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: var(--background-color);
+      color: var(--text-color);
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 30px;
+      padding: 2rem;
+      transition: background-color 0.3s, color 0.3s;
     }
-    .breaker-section {
-      background: #fff;
-      padding: 20px;
-      margin: 20px;
-      border-radius: 12px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-      width: 90%;
+
+    .header {
+      width: 100%;
       max-width: 800px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
     }
+
+    .theme-toggle {
+      background: var(--primary-color);
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    .theme-toggle:hover {
+      opacity: 0.9;
+    }
+
+    .breaker-section {
+      background: var(--card-background);
+      padding: 1.5rem;
+      margin: 1rem;
+      border-radius: 1rem;
+      box-shadow: var(--shadow);
+      width: 100%;
+      max-width: 800px;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .breaker-section:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow), 0 10px 20px -5px rgb(0 0 0 / 0.1);
+    }
+
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+    }
+
     h2 {
-      margin-top: 0;
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+      color: var(--primary-color);
     }
+
+    .controls {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
     .controls button {
-      padding: 10px 20px;
-      font-size: 16px;
-      margin: 5px;
-      border-radius: 8px;
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      border-radius: 0.5rem;
       border: none;
       cursor: pointer;
+      transition: transform 0.1s, opacity 0.2s;
+      font-weight: 500;
     }
-    .on { background-color: #28a745; color: white; }
-    .off { background-color: #dc3545; color: white; }
+
+    .controls button:hover {
+      opacity: 0.9;
+      transform: scale(1.02);
+    }
+
+    .controls button:active {
+      transform: scale(0.98);
+    }
+
+    .on { background-color: var(--success-color); color: white; }
+    .off { background-color: var(--danger-color); color: white; }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1rem;
+      margin: 1rem 0;
+    }
+
+    .stat-item {
+      background: rgba(0, 0, 0, 0.05);
+      padding: 1rem;
+      border-radius: 0.5rem;
+    }
+
+    .stat-item strong {
+      display: block;
+      font-size: 0.875rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .stat-item span {
+      font-size: 1.25rem;
+      font-weight: 500;
+    }
+
+    .loading {
+      opacity: 0.7;
+      pointer-events: none;
+    }
+
+    @media (max-width: 640px) {
+      body {
+        padding: 1rem;
+      }
+      
+      .breaker-section {
+        margin: 1rem 0;
+      }
+    }
   </style>
 </head>
 <body>
-  <h1>Smart Breaker Control</h1>
+  <div class="header">
+    <h1>Smart Breaker Control</h1>
+    <button class="theme-toggle" onclick="toggleTheme()">Toggle Theme</button>
+  </div>
 
   <!-- Breaker sections -->
   <div class="breaker-section" id="breaker-0">
@@ -47,10 +171,24 @@
       <button class="on" onclick="toggleBreaker(0, true)">Turn ON</button>
       <button class="off" onclick="toggleBreaker(0, false)">Turn OFF</button>
     </div>
-    <p><strong>Status:</strong> <span id="relay-state-0">Loading...</span></p>
-    <p><strong>Power:</strong> <span id="power-0">-</span> W</p>
-    <p><strong>Voltage:</strong> <span id="voltage-0">-</span> V</p>
-    <p><strong>Current:</strong> <span id="current-0">-</span> A</p>
+    <div class="stats">
+      <div class="stat-item">
+        <strong>Status</strong>
+        <span id="relay-state-0">Loading...</span>
+      </div>
+      <div class="stat-item">
+        <strong>Power</strong>
+        <span id="power-0">-</span> W
+      </div>
+      <div class="stat-item">
+        <strong>Voltage</strong>
+        <span id="voltage-0">-</span> V
+      </div>
+      <div class="stat-item">
+        <strong>Current</strong>
+        <span id="current-0">-</span> A
+      </div>
+    </div>
     <canvas id="powerChart-0" height="100"></canvas>
   </div>
 
@@ -60,21 +198,48 @@
       <button class="on" onclick="toggleBreaker(1, true)">Turn ON</button>
       <button class="off" onclick="toggleBreaker(1, false)">Turn OFF</button>
     </div>
-    <p><strong>Status:</strong> <span id="relay-state-1">Loading...</span></p>
-    <p><strong>Power:</strong> <span id="power-1">-</span> W</p>
-    <p><strong>Voltage:</strong> <span id="voltage-1">-</span> V</p>
-    <p><strong>Current:</strong> <span id="current-1">-</span> A</p>
+    <div class="stats">
+      <div class="stat-item">
+        <strong>Status</strong>
+        <span id="relay-state-1">Loading...</span>
+      </div>
+      <div class="stat-item">
+        <strong>Power</strong>
+        <span id="power-1">-</span> W
+      </div>
+      <div class="stat-item">
+        <strong>Voltage</strong>
+        <span id="voltage-1">-</span> V
+      </div>
+      <div class="stat-item">
+        <strong>Current</strong>
+        <span id="current-1">-</span> A
+      </div>
+    </div>
     <canvas id="powerChart-1" height="100"></canvas>
   </div>
 
   <script>
     const API_KEY = "supersecurekey";
     const BACKEND_URL = "https://your-backend.onrender.com";
-
     const charts = {};
+
+    // Theme handling
+    function toggleTheme() {
+      const isDark = document.body.getAttribute('data-theme') === 'dark';
+      document.body.setAttribute('data-theme', isDark ? 'light' : 'dark');
+      localStorage.setItem('theme', isDark ? 'light' : 'dark');
+      updateChartsTheme();
+    }
+
+    // Initialize theme
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    document.body.setAttribute('data-theme', savedTheme);
 
     function setupChart(breakerId) {
       const ctx = document.getElementById(`powerChart-${breakerId}`).getContext('2d');
+      const isDark = document.body.getAttribute('data-theme') === 'dark';
+      
       charts[breakerId] = new Chart(ctx, {
         type: 'line',
         data: {
@@ -82,35 +247,85 @@
           datasets: [{
             label: 'Power (W)',
             data: [],
-            borderColor: 'rgb(75, 192, 192)',
+            borderColor: '#2563eb',
+            backgroundColor: 'rgba(37, 99, 235, 0.1)',
+            fill: true,
             tension: 0.3
           }]
         },
         options: {
           responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              labels: {
+                color: isDark ? '#f3f4f6' : '#1f2937'
+              }
+            }
+          },
           scales: {
-            x: { title: { display: true, text: 'Time' }},
-            y: { title: { display: true, text: 'Power (W)' }, beginAtZero: true }
+            x: { 
+              title: { display: true, text: 'Time', color: isDark ? '#f3f4f6' : '#1f2937' },
+              grid: { color: isDark ? 'rgba(243, 244, 246, 0.1)' : 'rgba(31, 41, 55, 0.1)' }
+            },
+            y: { 
+              title: { display: true, text: 'Power (W)', color: isDark ? '#f3f4f6' : '#1f2937' },
+              beginAtZero: true,
+              grid: { color: isDark ? 'rgba(243, 244, 246, 0.1)' : 'rgba(31, 41, 55, 0.1)' }
+            }
           }
         }
       });
     }
 
+    function updateChartsTheme() {
+      Object.values(charts).forEach(chart => {
+        const isDark = document.body.getAttribute('data-theme') === 'dark';
+        const textColor = isDark ? '#f3f4f6' : '#1f2937';
+        const gridColor = isDark ? 'rgba(243, 244, 246, 0.1)' : 'rgba(31, 41, 55, 0.1)';
+
+        chart.options.plugins.legend.labels.color = textColor;
+        chart.options.scales.x.title.color = textColor;
+        chart.options.scales.y.title.color = textColor;
+        chart.options.scales.x.grid.color = gridColor;
+        chart.options.scales.y.grid.color = gridColor;
+        chart.update();
+      });
+    }
+
     function toggleBreaker(id, turnOn) {
+      const section = document.getElementById(`breaker-${id}`);
+      section.classList.add('loading');
+
       fetch(`${BACKEND_URL}/breaker/${id}/${turnOn ? 'on' : 'off'}`, {
         method: "POST",
         headers: { "x-api-key": API_KEY }
       })
-      .then(res => res.json())
-      .then(data => console.log("Breaker toggled:", data.status))
-      .catch(err => console.error("Error:", err));
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        return res.json();
+      })
+      .then(data => {
+        console.log("Breaker toggled:", data.status);
+        updateStatus(id);
+      })
+      .catch(err => {
+        console.error("Error:", err);
+        alert(`Failed to toggle breaker ${id + 1}. Please try again.`);
+      })
+      .finally(() => {
+        section.classList.remove('loading');
+      });
     }
 
     function updateStatus(id) {
       fetch(`${BACKEND_URL}/breaker/${id}/status`, {
         headers: { "x-api-key": API_KEY }
       })
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        return res.json();
+      })
       .then(data => {
         document.getElementById(`relay-state-${id}`).innerText = data.output ? "ON" : "OFF";
         document.getElementById(`power-${id}`).innerText = data.apower?.toFixed(1) || "-";
@@ -128,14 +343,17 @@
         }
         chart.update();
       })
-      .catch(err => console.error("Status fetch error:", err));
+      .catch(err => {
+        console.error("Status fetch error:", err);
+        document.getElementById(`relay-state-${id}`).innerText = "Error";
+      });
     }
 
     function startPolling() {
       [0, 1].forEach(id => {
         setupChart(id);
         updateStatus(id);
-        setInterval(() => updateStatus(id), 300000); // every 5 mins
+        setInterval(() => updateStatus(id), 300000);
       });
     }
 
