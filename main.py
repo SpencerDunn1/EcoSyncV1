@@ -16,11 +16,12 @@ from users import router as user_router
 
 app = FastAPI()
 
+
 # Add secure session middleware for login handling
 app.add_middleware(SessionMiddleware, secret_key="supersecretkey")
 
 # Mount static folder if needed (e.g., for JS/CSS/images)
-app.mount("/static", StaticFiles(directory="static"), name="static")
+# app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Include auth routes for login, signup, logout
 app.include_router(user_router)
