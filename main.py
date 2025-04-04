@@ -7,6 +7,8 @@ import os
 import threading
 import json
 import paho.mqtt.client as mqtt
+import httpx
+
 
 from db import get_db, SessionLocal
 from models import PowerReading, BreakerAction
@@ -22,6 +24,7 @@ app.add_middleware(SessionMiddleware, secret_key="supersecretkey")
 # Include user auth routes
 app.include_router(user_router)
 
+RASPBERRY_PI_URL = "http://100.111.203.36:8000"
 API_KEY = os.getenv("API_KEY", "supersecurekey")
 MQTT_TOPIC_STATUS = "shellyplus1pm-cc7b5c8426cc/events/rpc"
 
@@ -108,3 +111,18 @@ def log_reading(breaker_id: int, data: dict, db: Session = Depends(get_db)):
 @app.get("/breaker/{breaker_id}/readings")
 def get_readings(breaker_id: int, db: Session = Depends(get_db)):
     return db.query(PowerReading).filter_by(breaker_id=breaker_id).order_by(PowerReading.timestamp.desc()).limit(100).all()
+
+@app.post("/breaker/{breaker_id}/toggle")
+async def toggle_breaker(breaker_id: int, state: bool):
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{RASPBERRY_PI_URL}/switch",
+                json={"breaker_id": breaker_id, "state": state},
+                timeout=5
+            )
+        return response.json()
+    except Exception as e:
+        print("Error communicating with Pi:", e)
+        return {"success": False, "message": "Failed to toggle breaker."}
+    
