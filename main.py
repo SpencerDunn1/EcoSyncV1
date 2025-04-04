@@ -6,8 +6,8 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import paho.mqtt.client as mqtt
 
-# ----------- MQTT Setup -------------
-MQTT_BROKER = os.getenv("MQTT_HOST", "100.111.203.36")  # Pi’s Tailscale IP or fallback
+# ---------- MQTT Configuration ----------
+MQTT_BROKER = os.getenv("MQTT_HOST", "localhost")  # Tailscale IP of Pi
 MQTT_PORT = int(os.getenv("MQTT_PORT", 1883))
 MQTT_TOPIC = "smartbreaker/control"
 
@@ -16,17 +16,17 @@ mqtt_client = mqtt.Client()
 def connect_mqtt():
     try:
         mqtt_client.connect(MQTT_BROKER, MQTT_PORT, 60)
-        print(f"[MQTT] Connected to {MQTT_BROKER}:{MQTT_PORT}")
+        print(f"[MQTT] Connected to broker at {MQTT_BROKER}:{MQTT_PORT}")
     except Exception as e:
-        print(f"[MQTT ERROR] Could not connect: {e}")
+        print(f"[MQTT ERROR] Could not connect to {MQTT_BROKER}:{MQTT_PORT} -> {e}")
 
-# ----------- FastAPI Setup ----------
+# ---------- FastAPI Setup ----------
 app = FastAPI()
 
-# Enable CORS for local testing or cross-origin frontend
+# Enable CORS (optional: limit origins in production)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Limit in production
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -36,12 +36,12 @@ app.add_middleware(
 async def startup_event():
     connect_mqtt()
 
-# ----------- Request Model ----------
+# ---------- Request Model ----------
 class ToggleCommand(BaseModel):
     breaker_id: int
     state: bool
 
-# ----------- Routes -----------------
+# ---------- Routes ----------
 @app.get("/ping")
 async def ping():
     return {"status": "alive"}
@@ -54,12 +54,12 @@ async def toggle_breaker(cmd: ToggleCommand):
             "state": cmd.state
         })
 
+        print(f"[MQTT] Sending to {MQTT_TOPIC} → {payload}")
         result = mqtt_client.publish(MQTT_TOPIC, payload)
+
         if result.rc == mqtt.MQTT_ERR_SUCCESS:
-            print(f"[MQTT] Published: {payload}")
             return {"success": True, "message": f"Breaker {cmd.breaker_id} toggled {'on' if cmd.state else 'off'}"}
         else:
-            print(f"[MQTT ERROR] Publish failed with code {result.rc}")
             return JSONResponse(status_code=500, content={"success": False, "message": "MQTT publish failed"})
 
     except Exception as e:
