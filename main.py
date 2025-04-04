@@ -1,12 +1,13 @@
 import os
 import json
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 import paho.mqtt.client as mqtt
 
-# --- MQTT Setup ---
-MQTT_BROKER = os.getenv("MQTT_HOST", "100.111.203.36")  # Replace with your Pi's Tailscale IP
+# ----------- MQTT Setup -------------
+MQTT_BROKER = os.getenv("MQTT_HOST", "100.111.203.36")  # Pi’s Tailscale IP or fallback
 MQTT_PORT = int(os.getenv("MQTT_PORT", 1883))
 MQTT_TOPIC = "smartbreaker/control"
 
@@ -17,52 +18,48 @@ def connect_mqtt():
         mqtt_client.connect(MQTT_BROKER, MQTT_PORT, 60)
         print(f"[MQTT] Connected to {MQTT_BROKER}:{MQTT_PORT}")
     except Exception as e:
-        print(f"[MQTT ERROR] Connection failed: {e}")
+        print(f"[MQTT ERROR] Could not connect: {e}")
 
-# --- FastAPI App ---
+# ----------- FastAPI Setup ----------
 app = FastAPI()
 
-# --- CORS Middleware (for frontend access) ---
+# Enable CORS for local testing or cross-origin frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Set specific origin in production
+    allow_origins=["*"],  # Limit in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# --- Startup Event ---
 @app.on_event("startup")
 async def startup_event():
     connect_mqtt()
 
-# --- Health Check ---
+# ----------- Request Model ----------
+class ToggleCommand(BaseModel):
+    breaker_id: int
+    state: bool
+
+# ----------- Routes -----------------
 @app.get("/ping")
 async def ping():
     return {"status": "alive"}
 
-# --- Toggle Endpoint ---
 @app.post("/toggle")
-async def toggle_breaker(request: Request):
+async def toggle_breaker(cmd: ToggleCommand):
     try:
-        data = await request.json()
-        breaker_id = data.get("breaker_id")
-        state = data.get("state")
-
-        if breaker_id is None or state is None:
-            return JSONResponse(status_code=400, content={"success": False, "message": "Missing breaker_id or state"})
-
         payload = json.dumps({
-            "breaker_id": breaker_id,
-            "state": state
+            "breaker_id": cmd.breaker_id,
+            "state": cmd.state
         })
 
         result = mqtt_client.publish(MQTT_TOPIC, payload)
         if result.rc == mqtt.MQTT_ERR_SUCCESS:
-            print(f"[MQTT] Sent to {MQTT_TOPIC}: {payload}")
-            return {"success": True, "message": f"Breaker {breaker_id} toggled {'on' if state else 'off'}"}
+            print(f"[MQTT] Published: {payload}")
+            return {"success": True, "message": f"Breaker {cmd.breaker_id} toggled {'on' if cmd.state else 'off'}"}
         else:
-            print("[MQTT ERROR] Publish failed")
+            print(f"[MQTT ERROR] Publish failed with code {result.rc}")
             return JSONResponse(status_code=500, content={"success": False, "message": "MQTT publish failed"})
 
     except Exception as e:
