@@ -8,7 +8,7 @@ import os
 app = FastAPI()
 
 # Serve static files and HTML templates
-app.mount("/static", StaticFiles(directory="static"), name="static")
+#app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory=".")
 
 # Raspberry Pi IP address through Tailscale and exposed FastAPI port
