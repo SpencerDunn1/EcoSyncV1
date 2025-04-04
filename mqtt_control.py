@@ -4,7 +4,7 @@ import os
 import socket
 
 # Broker details
-MQTT_BROKER = os.getenv("MQTT_BROKER", "100.110.222.33")
+MQTT_BROKER = os.getenv("MQTT_BROKER", "100.111.203.36")
 MQTT_PORT = int(os.getenv("MQTT_PORT", 1883))
 MQTT_USERNAME = os.getenv("MQTT_USERNAME", None)  # Add if you have auth enabled
 MQTT_PASSWORD = os.getenv("MQTT_PASSWORD", None)  # Add if you have auth enabled
