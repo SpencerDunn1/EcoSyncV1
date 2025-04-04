@@ -1,8 +1,10 @@
 import os
 import json
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 import paho.mqtt.client as mqtt
 
@@ -22,6 +24,12 @@ def connect_mqtt():
 
 # ---------- FastAPI Setup ----------
 app = FastAPI()
+
+# Mount static files
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# Setup templates
+templates = Jinja2Templates(directory=".")
 
 # Enable CORS (optional: limit origins in production)
 app.add_middleware(
@@ -65,3 +73,16 @@ async def toggle_breaker(cmd: ToggleCommand):
     except Exception as e:
         print(f"[ERROR] {e}")
         return JSONResponse(status_code=500, content={"success": False, "message": str(e)})
+
+# Add these new routes
+@app.get("/", response_class=HTMLResponse)
+async def root(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
+
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request):
+    return templates.TemplateResponse("login.html", {"request": request})
+
+@app.get("/signup", response_class=HTMLResponse)
+async def signup_page(request: Request):
+    return templates.TemplateResponse("signup.html", {"request": request})
