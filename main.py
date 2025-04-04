@@ -1,39 +1,30 @@
 from fastapi import FastAPI, Header, HTTPException, Depends, Request
-import paho.mqtt.publish as publish
-import paho.mqtt.client as mqtt
 from fastapi.responses import HTMLResponse, RedirectResponse
-from starlette.middleware.sessions import SessionMiddleware
+from fastapi.middleware.sessions import SessionMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
-import json
 import os
 import threading
+import json
+import paho.mqtt.client as mqtt
 
 from db import get_db, SessionLocal
 from models import PowerReading, BreakerAction
 from auth import get_current_user
 from users import router as user_router
+from mqtt_control import send_switch_command
 
 app = FastAPI()
 
-
-# Add secure session middleware for login handling
+# Secure session handling
 app.add_middleware(SessionMiddleware, secret_key="supersecretkey")
 
-# Mount static folder if needed (e.g., for JS/CSS/images)
-# app.mount("/static", StaticFiles(directory="static"), name="static")
-
-# Include auth routes for login, signup, logout
+# Include user auth routes
 app.include_router(user_router)
 
 API_KEY = os.getenv("API_KEY", "supersecurekey")
-MQTT_HOST = os.getenv("MQTT_HOST", "100.x.x.x")
-MQTT_PORT = int(os.getenv("MQTT_PORT", 1883))
+MQTT_TOPIC_STATUS = "shellyplus1pm-cc7b5c8426cc/events/rpc"
 
-MQTT_TOPIC_COMMAND = "shellyplus1pm/rpc"
-MQTT_TOPIC_STATUS = "shellyplus1pm/events/rpc"
-
-# Store status separately for two breakers
 latest_status = {
     0: {"status": "unknown"},
     1: {"status": "unknown"}
@@ -46,7 +37,6 @@ def on_message(client, userdata, msg):
             breaker_id = payload["params"].get("id", 0)
             latest_status[breaker_id] = payload["params"]
 
-            # Store the reading in the database
             db = SessionLocal()
             reading = PowerReading(
                 breaker_id=breaker_id,
@@ -57,20 +47,19 @@ def on_message(client, userdata, msg):
             db.add(reading)
             db.commit()
             db.close()
-
     except Exception as e:
         print("Error parsing MQTT message:", e)
 
 def start_mqtt_listener():
     client = mqtt.Client()
     client.on_message = on_message
-    client.connect(MQTT_HOST, MQTT_PORT)
+    mqtt_host = "localhost"  # local broker on Pi
+    client.connect(mqtt_host, 1883)
     client.subscribe(MQTT_TOPIC_STATUS)
     client.loop_start()
 
-# Uncomment this to enable MQTT connection after setup
-# mqtt_thread = threading.Thread(target=start_mqtt_listener, daemon=True)
-# mqtt_thread.start()
+# Uncomment to run locally on Pi
+# threading.Thread(target=start_mqtt_listener, daemon=True).start()
 
 def verify_token(x_api_key: str):
     if x_api_key != API_KEY:
@@ -90,25 +79,13 @@ def dashboard(request: Request, user: str = Depends(get_current_user)):
 @app.post("/breaker/{breaker_id}/on")
 def turn_on(breaker_id: int, x_api_key: str = Header(...)):
     verify_token(x_api_key)
-    payload = {
-        "id": 1,
-        "src": "cloud",
-        "method": "Switch.Set",
-        "params": {"id": breaker_id, "on": True}
-    }
-    publish.single(MQTT_TOPIC_COMMAND, json.dumps(payload), hostname=MQTT_HOST, port=MQTT_PORT)
+    send_switch_command(breaker_id, True)
     return {"status": f"sent_on_breaker_{breaker_id}"}
 
 @app.post("/breaker/{breaker_id}/off")
 def turn_off(breaker_id: int, x_api_key: str = Header(...)):
     verify_token(x_api_key)
-    payload = {
-        "id": 1,
-        "src": "cloud",
-        "method": "Switch.Set",
-        "params": {"id": breaker_id, "on": False}
-    }
-    publish.single(MQTT_TOPIC_COMMAND, json.dumps(payload), hostname=MQTT_HOST, port=MQTT_PORT)
+    send_switch_command(breaker_id, False)
     return {"status": f"sent_off_breaker_{breaker_id}"}
 
 @app.get("/breaker/{breaker_id}/status")
