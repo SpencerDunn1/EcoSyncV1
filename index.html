@@ -185,7 +185,10 @@
 <body>
   <div class="header">
     <h1>Smart Breaker Control</h1>
-    <button class="theme-toggle" onclick="toggleTheme()">Toggle Theme</button>
+    <div class="header-controls">
+      <button class="theme-toggle" onclick="toggleTheme()">Toggle Theme</button>
+      <button class="logout-btn" onclick="logout()">Logout</button>
+    </div>
   </div>
 
   <!-- Breaker sections -->
@@ -441,5 +444,25 @@
 
     startPolling();
   </script>
+  <style>
+    .header-controls {
+      display: flex;
+      gap: 1rem;
+    }
+
+    .logout-btn {
+      background: var(--danger-color);
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    .logout-btn:hover {
+      opacity: 0.9;
+    }
+  </style>
 </body>
 </html>

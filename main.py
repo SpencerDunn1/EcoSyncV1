@@ -1,12 +1,13 @@
 import os
 import json
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 import paho.mqtt.client as mqtt
+from auth import get_current_user
 
 # ---------- MQTT Configuration ----------
 MQTT_BROKER = os.getenv("MQTT_HOST", "localhost")  # Tailscale IP of Pi
@@ -86,3 +87,10 @@ async def login_page(request: Request):
 @app.get("/signup", response_class=HTMLResponse)
 async def signup_page(request: Request):
     return templates.TemplateResponse("signup.html", {"request": request})
+
+# Add this new route before your other routes
+@app.get("/dashboard", response_class=HTMLResponse)
+async def dashboard(request: Request, current_user: str = Depends(get_current_user)):
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=302)
+    return templates.TemplateResponse("index.html", {"request": request})
