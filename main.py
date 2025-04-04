@@ -1,128 +1,70 @@
-from fastapi import FastAPI, Header, HTTPException, Depends, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
-from starlette.middleware.sessions import SessionMiddleware
-from fastapi.staticfiles import StaticFiles
-from sqlalchemy.orm import Session
 import os
-import threading
 import json
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 import paho.mqtt.client as mqtt
-import httpx
 
+# --- MQTT Setup ---
+MQTT_BROKER = os.getenv("MQTT_HOST", "100.111.203.36")  # Replace with your Pi's Tailscale IP
+MQTT_PORT = int(os.getenv("MQTT_PORT", 1883))
+MQTT_TOPIC = "smartbreaker/control"
 
-from db import get_db, SessionLocal
-from models import PowerReading, BreakerAction
-from auth import get_current_user
-from users import router as user_router
-from mqtt_control import send_switch_command
+mqtt_client = mqtt.Client()
 
+def connect_mqtt():
+    try:
+        mqtt_client.connect(MQTT_BROKER, MQTT_PORT, 60)
+        print(f"[MQTT] Connected to {MQTT_BROKER}:{MQTT_PORT}")
+    except Exception as e:
+        print(f"[MQTT ERROR] Connection failed: {e}")
+
+# --- FastAPI App ---
 app = FastAPI()
 
-# Secure session handling
-app.add_middleware(SessionMiddleware, secret_key="supersecretkey")
+# --- CORS Middleware (for frontend access) ---
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Set specific origin in production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-# Include user auth routes
-app.include_router(user_router)
+# --- Startup Event ---
+@app.on_event("startup")
+async def startup_event():
+    connect_mqtt()
 
-RASPBERRY_PI_URL = "http://100.111.203.36:8000"
-API_KEY = os.getenv("API_KEY", "supersecurekey")
-MQTT_TOPIC_STATUS = "shellyplus1pm-cc7b5c8426cc/events/rpc"
+# --- Health Check ---
+@app.get("/ping")
+async def ping():
+    return {"status": "alive"}
 
-latest_status = {
-    0: {"status": "unknown"},
-    1: {"status": "unknown"}
-}
-
-def on_message(client, userdata, msg):
+# --- Toggle Endpoint ---
+@app.post("/toggle")
+async def toggle_breaker(request: Request):
     try:
-        payload = json.loads(msg.payload.decode())
-        if payload.get("method") == "NotifyStatus" and "params" in payload:
-            breaker_id = payload["params"].get("id", 0)
-            latest_status[breaker_id] = payload["params"]
+        data = await request.json()
+        breaker_id = data.get("breaker_id")
+        state = data.get("state")
 
-            db = SessionLocal()
-            reading = PowerReading(
-                breaker_id=breaker_id,
-                power=payload["params"].get("apower"),
-                voltage=payload["params"].get("voltage"),
-                current=payload["params"].get("current")
-            )
-            db.add(reading)
-            db.commit()
-            db.close()
+        if breaker_id is None or state is None:
+            return JSONResponse(status_code=400, content={"success": False, "message": "Missing breaker_id or state"})
+
+        payload = json.dumps({
+            "breaker_id": breaker_id,
+            "state": state
+        })
+
+        result = mqtt_client.publish(MQTT_TOPIC, payload)
+        if result.rc == mqtt.MQTT_ERR_SUCCESS:
+            print(f"[MQTT] Sent to {MQTT_TOPIC}: {payload}")
+            return {"success": True, "message": f"Breaker {breaker_id} toggled {'on' if state else 'off'}"}
+        else:
+            print("[MQTT ERROR] Publish failed")
+            return JSONResponse(status_code=500, content={"success": False, "message": "MQTT publish failed"})
+
     except Exception as e:
-        print("Error parsing MQTT message:", e)
-
-def start_mqtt_listener():
-    client = mqtt.Client()
-    client.on_message = on_message
-    mqtt_host = "localhost"  # local broker on Pi
-    client.connect(mqtt_host, 1883)
-    client.subscribe(MQTT_TOPIC_STATUS)
-    client.loop_start()
-
-# Uncomment to run locally on Pi
-# threading.Thread(target=start_mqtt_listener, daemon=True).start()
-
-def verify_token(x_api_key: str):
-    if x_api_key != API_KEY:
-        raise HTTPException(status_code=403, detail="Invalid API Key")
-
-@app.get("/", response_class=HTMLResponse)
-def root():
-    return RedirectResponse(url="/login")
-
-@app.get("/dashboard", response_class=HTMLResponse)
-def dashboard(request: Request, user: str = Depends(get_current_user)):
-    if not user:
-        return RedirectResponse(url="/login")
-    with open("index.html", "r") as file:
-        return HTMLResponse(content=file.read(), status_code=200)
-
-@app.post("/breaker/{breaker_id}/on")
-def turn_on(breaker_id: int, x_api_key: str = Header(...)):
-    verify_token(x_api_key)
-    send_switch_command(breaker_id, True)
-    return {"status": f"sent_on_breaker_{breaker_id}"}
-
-@app.post("/breaker/{breaker_id}/off")
-def turn_off(breaker_id: int, x_api_key: str = Header(...)):
-    verify_token(x_api_key)
-    send_switch_command(breaker_id, False)
-    return {"status": f"sent_off_breaker_{breaker_id}"}
-
-@app.get("/breaker/{breaker_id}/status")
-def get_status(breaker_id: int, x_api_key: str = Header(...)):
-    verify_token(x_api_key)
-    return latest_status.get(breaker_id, {"status": "not_found"})
-
-@app.post("/breaker/{breaker_id}/log")
-def log_reading(breaker_id: int, data: dict, db: Session = Depends(get_db)):
-    reading = PowerReading(
-        breaker_id=breaker_id,
-        power=data.get("power"),
-        voltage=data.get("voltage"),
-        current=data.get("current")
-    )
-    db.add(reading)
-    db.commit()
-    return {"status": "reading_logged"}
-
-@app.get("/breaker/{breaker_id}/readings")
-def get_readings(breaker_id: int, db: Session = Depends(get_db)):
-    return db.query(PowerReading).filter_by(breaker_id=breaker_id).order_by(PowerReading.timestamp.desc()).limit(100).all()
-
-@app.post("/breaker/{breaker_id}/toggle")
-async def toggle_breaker(breaker_id: int, state: bool):
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{RASPBERRY_PI_URL}/switch",
-                json={"breaker_id": breaker_id, "state": state},
-                timeout=5
-            )
-        return response.json()
-    except Exception as e:
-        print("Error communicating with Pi:", e)
-        return {"success": False, "message": "Failed to toggle breaker."}
-    
+        print(f"[ERROR] {e}")
+        return JSONResponse(status_code=500, content={"success": False, "message": str(e)})
