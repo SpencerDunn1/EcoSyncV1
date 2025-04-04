@@ -238,7 +238,8 @@
 
   <script>
     const API_KEY = "supersecurekey";
-    const BACKEND_URL = "https://ecosyncv1.onrender.com";
+    // Update this to your Raspberry Pi's Tailscale IP and port
+    const BACKEND_URL = "http://100.111.203.36:8000";  // Adjust port if different
     const charts = {};
 
     // Theme handling
@@ -315,21 +316,35 @@
       const section = document.getElementById(`breaker-${id}`);
       section.classList.add('loading');
 
-      fetch(`${BACKEND_URL}/breaker/${id}/${turnOn ? 'on' : 'off'}`, {
+      fetch(`${BACKEND_URL}/toggle`, {
         method: "POST",
-        headers: { "x-api-key": API_KEY }
+        headers: { 
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          breaker_id: id,
+          state: turnOn
+        })
       })
       .then(res => {
-        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        if (!res.ok) {
+          return res.json().then(err => {
+            throw new Error(err.message || `HTTP error! status: ${res.status}`);
+          });
+        }
         return res.json();
       })
       .then(data => {
-        console.log("Breaker toggled:", data.status);
-        updateStatus(id);
+        if (data.success) {
+          console.log("Breaker toggled:", data.message);
+          updateStatus(id);
+        } else {
+          throw new Error(data.message || "Toggle failed");
+        }
       })
       .catch(err => {
         console.error("Error:", err);
-        alert(`Failed to toggle breaker ${id + 1}. Please try again.`);
+        alert(`Failed to toggle breaker ${id + 1}: ${err.message}`);
       })
       .finally(() => {
         section.classList.remove('loading');
