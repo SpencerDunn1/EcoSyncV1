@@ -8,6 +8,10 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 import paho.mqtt.client as mqtt
 from auth import get_current_user
+import logging
+
+
+logging.basicConfig(level=logging.INFO)
 
 # ---------- MQTT Configuration ----------
 MQTT_BROKER = os.getenv("MQTT_HOST", "localhost")  # Tailscale IP of Pi
@@ -94,3 +98,28 @@ async def dashboard(request: Request, current_user: str = Depends(get_current_us
     if not current_user:
         return RedirectResponse(url="/login", status_code=302)
     return templates.TemplateResponse("index.html", {"request": request})
+
+@app.post("/toggle")
+async def toggle_breaker(data: dict):
+    try:
+        breaker_id = data["breaker_id"]
+        state = data["state"]
+        payload = json.dumps({"breaker_id": breaker_id, "state": state})
+        topic = "smartbreaker/control"
+
+        logging.info(f"Connecting to MQTT {MQTT_BROKER}:{MQTT_PORT}")
+        mqtt_client = mqtt.Client()
+        mqtt_client.connect(MQTT_BROKER, MQTT_PORT, 60)
+
+        logging.info(f"Publishing to {topic}: {payload}")
+        result = mqtt_client.publish(topic, payload)
+        mqtt_client.disconnect()
+
+        if result.rc == mqtt.MQTT_ERR_SUCCESS:
+            return {"success": True, "message": "MQTT published"}
+        else:
+            return {"success": False, "message": f"MQTT publish failed: code {result.rc}"}
+    except Exception as e:
+        logging.error(f"Toggle failed: {e}")
+        return {"success": False, "message": str(e)}
+    
