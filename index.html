@@ -315,7 +315,7 @@
       const section = document.getElementById(`breaker-${id}`);
       section.classList.add('loading');
 
-      fetch(`${BACKEND_URL}/api/switch`, {
+      fetch(`${BACKEND_URL}/switch`, {
         method: "POST",
         headers: { 
           "Content-Type": "application/json"
