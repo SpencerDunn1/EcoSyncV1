@@ -168,27 +168,12 @@
         height: 200px;
       }
     }
-    body.disconnected::before {
-          content: "Connection Lost";
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          background: var(--danger-color);
-          color: white;
-          text-align: center;
-          padding: 0.5rem;
-          z-index: 1000;
-        }
   </style>
 </head>
 <body>
   <div class="header">
     <h1>Smart Breaker Control</h1>
-    <div class="header-controls">
-      <button class="theme-toggle" onclick="toggleTheme()">Toggle Theme</button>
-      <button class="logout-btn" onclick="logout()">Logout</button>
-    </div>
+    <button class="theme-toggle" onclick="toggleTheme()">Toggle Theme</button>
   </div>
 
   <!-- Breaker sections -->
@@ -252,23 +237,8 @@
   </div>
 
   <script>
-    // Add this at the beginning of your script
-    document.addEventListener('DOMContentLoaded', function() {
-      // Check if user is logged in
-      fetch(`${BACKEND_URL}/auth/check`)
-        .then(res => {
-          if (!res.ok) {
-            window.location.href = '/login';
-          }
-        })
-        .catch(err => {
-          console.error("Auth check failed:", err);
-          window.location.href = '/login';
-        });
-    });
-
     const API_KEY = "supersecurekey";
-    const BACKEND_URL = "http://100.111.203.36:8000";
+    const BACKEND_URL = "https://your-backend.onrender.com";
     const charts = {};
 
     // Theme handling
@@ -343,68 +313,47 @@
 
     function toggleBreaker(id, turnOn) {
       const section = document.getElementById(`breaker-${id}`);
-      const buttons = section.querySelectorAll('button');
-      
-      // Disable all buttons during operation
-      buttons.forEach(btn => btn.disabled = true);
       section.classList.add('loading');
 
-      fetch(`${BACKEND_URL}/toggle`, {
+      fetch(`${BACKEND_URL}/breaker/${id}/${turnOn ? 'on' : 'off'}`, {
         method: "POST",
-        headers: { 
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          breaker_id: id,
-          state: turnOn
-        })
-      })
-      .then(res => {
-        if (!res.ok) {
-          return res.json().then(err => {
-            throw new Error(err.message || `HTTP error! status: ${res.status}`);
-          });
-        }
-        return res.json();
-      })
-      .then(data => {
-        if (data.success) {
-          console.log("Breaker toggled:", data.message);
-          updateStatus(id);
-        } else {
-          throw new Error(data.message || "Toggle failed");
-        }
-      })
-      .catch(err => {
-        console.error("Error:", err);
-        alert(`Failed to toggle breaker ${id + 1}: ${err.message}`);
-      })
-      .finally(() => {
-        section.classList.remove('loading');
-        buttons.forEach(btn => btn.disabled = false);
-      });
-    }
-
-    function updateStatus(id) {
-      fetch(`${BACKEND_URL}/status/${id}`, {
-        headers: { 
-          "Content-Type": "application/json"
-        }
+        headers: { "x-api-key": API_KEY }
       })
       .then(res => {
         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
         return res.json();
       })
       .then(data => {
-        document.getElementById(`relay-state-${id}`).innerText = data.state ? "ON" : "OFF";
-        document.getElementById(`power-${id}`).innerText = data.power?.toFixed(1) || "-";
+        console.log("Breaker toggled:", data.status);
+        updateStatus(id);
+      })
+      .catch(err => {
+        console.error("Error:", err);
+        alert(`Failed to toggle breaker ${id + 1}. Please try again.`);
+      })
+      .finally(() => {
+        section.classList.remove('loading');
+      });
+    }
+
+    function updateStatus(id) {
+      fetch(`${BACKEND_URL}/breaker/${id}/status`, {
+        headers: { "x-api-key": API_KEY }
+      })
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        return res.json();
+      })
+      .then(data => {
+        document.getElementById(`relay-state-${id}`).innerText = data.output ? "ON" : "OFF";
+        document.getElementById(`power-${id}`).innerText = data.apower?.toFixed(1) || "-";
         document.getElementById(`voltage-${id}`).innerText = data.voltage?.toFixed(1) || "-";
         document.getElementById(`current-${id}`).innerText = data.current?.toFixed(2) || "-";
 
         const chart = charts[id];
         const now = new Date().toLocaleTimeString();
         chart.data.labels.push(now);
-        chart.data.datasets[0].data.push(data.power || 0);
+        chart.data.datasets[0].data.push(data.apower || 0);
 
         if (chart.data.labels.length > 288) {
           chart.data.labels.shift();
@@ -418,51 +367,15 @@
       });
     }
 
-    // Update polling interval to be more frequent (every 5 seconds)
     function startPolling() {
       [0, 1].forEach(id => {
         setupChart(id);
         updateStatus(id);
-        setInterval(() => updateStatus(id), 5000);  // Changed from 300000 to 5000
+        setInterval(() => updateStatus(id), 300000);
       });
     }
 
-    function checkConnection() {
-          fetch(`${BACKEND_URL}/ping`)
-            .then(res => res.json())
-            .then(data => {
-              document.body.classList.remove('disconnected');
-            })
-            .catch(err => {
-              document.body.classList.add('disconnected');
-              console.error("Backend connection failed:", err);
-            });
-        }
-    
-        // Add to your startPolling function
-        setInterval(checkConnection, 10000);  // Check connection every 10 seconds
-
     startPolling();
   </script>
-  <style>
-    .header-controls {
-      display: flex;
-      gap: 1rem;
-    }
-
-    .logout-btn {
-      background: var(--danger-color);
-      color: white;
-      border: none;
-      padding: 0.5rem 1rem;
-      border-radius: 0.5rem;
-      cursor: pointer;
-      transition: opacity 0.2s;
-    }
-
-    .logout-btn:hover {
-      opacity: 0.9;
-    }
-  </style>
 </body>
 </html>
