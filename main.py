@@ -23,10 +23,9 @@ class SwitchRequest(BaseModel):
 
 class PowerReading(BaseModel):
     breaker_id: str
-    power: Decimal
-    voltage: Decimal
-    current: Decimal
-
+    power: float
+    voltage: float
+    current: float
 app = FastAPI()
 router = APIRouter()
 

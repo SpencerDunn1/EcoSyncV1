@@ -264,7 +264,8 @@
     async function updateStatus(id) {
       const res = await fetch(`${BACKEND_URL}/reading/latest?breaker_id=${id}`);
       const data = await res.json();
-
+      console.log(`🧪 [Breaker ${id}] Latest data from backend:`, data);
+      
       if (!data || data.error) return;
 
       document.getElementById(`relay-state-${id}`).innerText = data.power > 0 ? "ON" : "OFF";
