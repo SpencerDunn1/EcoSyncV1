@@ -134,6 +134,36 @@ def log_reading(breaker_id: int, data: dict, db: Session = Depends(get_db)):
     return {"status": "reading_logged"}
 
 
+@app.post("/switch")
+async def switch_breaker(request: Request):
+    data = await request.json()
+    breaker_id = data.get("breaker_id")
+    state = data.get("state")
+
+    if state not in ["true", "false"]:
+        raise HTTPException(status_code=400, detail="State must be 'true' or 'false'")
+
+    payload = {
+        "id": breaker_id,
+        "state": state
+    }
+
+    try:
+        publish.single(
+            topic="smartbreaker/control",
+            payload=json.dumps(payload),
+            hostname="your-cluster.s2.eu.hivemq.cloud",
+            port=8883,
+            auth={
+                'username': 'your-mqtt-username',
+                'password': 'your-mqtt-password'
+            },
+            tls=ssl.create_default_context()
+        )
+        return {"message": f"Sent {state} command to breaker {breaker_id}"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"MQTT publish failed: {e}")
+    
 @router.post("/api/switch")
 def switch_breaker(breaker_id: str, state: str):
     if state not in ["true", "false"]:
