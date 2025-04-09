@@ -20,6 +20,12 @@ class SwitchRequest(BaseModel):
     breaker_id: str
     state: str  # expects "true" or "false" as strings
 
+class PowerReading(BaseModel):
+    breaker_id: str
+    power: float
+    voltage: float
+    current: float
+
 app = FastAPI()
 router = APIRouter()
 
@@ -193,3 +199,15 @@ def switch_breaker(breaker_id: str, state: str):
 @app.get("/breaker/{breaker_id}/readings")
 def get_readings(breaker_id: int, db: Session = Depends(get_db)):
     return db.query(PowerReading).filter_by(breaker_id=breaker_id).order_by(PowerReading.timestamp.desc()).limit(100).all()
+
+latest_readings = {}  # Store in memory for now
+
+@app.post("/reading")
+async def receive_reading(data: PowerReading):
+    latest_readings[data.breaker_id] = data
+    return {"status": "received"}
+
+@app.get("/reading/latest")
+async def get_latest(breaker_id: str):
+    reading = latest_readings.get(breaker_id)
+    return reading if reading else {"error": "No data yet"}
