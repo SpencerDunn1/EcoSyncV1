@@ -15,6 +15,7 @@ from models import PowerReading, BreakerAction
 from auth import get_current_user
 from users import router as user_router
 from pydantic import BaseModel
+from decimal import Decimal
 
 class SwitchRequest(BaseModel):
     breaker_id: str
@@ -22,9 +23,9 @@ class SwitchRequest(BaseModel):
 
 class PowerReading(BaseModel):
     breaker_id: str
-    power: float
-    voltage: float
-    current: float
+    power: Decimal
+    voltage: Decimal
+    current: Decimal
 
 app = FastAPI()
 router = APIRouter()
