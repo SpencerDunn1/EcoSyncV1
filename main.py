@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Header, HTTPException, Depends, Request
+from fastapi import FastAPI, Header, HTTPException, Depends, Request, APIRouter
 import paho.mqtt.publish as publish
 import paho.mqtt.client as mqtt
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -8,6 +8,11 @@ from sqlalchemy.orm import Session
 import json
 import os
 import threading
+import json
+import ssl
+
+
+
 
 from db import get_db, SessionLocal
 from models import PowerReading, BreakerAction
@@ -15,7 +20,7 @@ from auth import get_current_user
 from users import router as user_router
 
 app = FastAPI()
-
+router = APIRouter()
 
 # Add secure session middleware for login handling
 app.add_middleware(SessionMiddleware, secret_key="supersecretkey")
@@ -128,6 +133,33 @@ def log_reading(breaker_id: int, data: dict, db: Session = Depends(get_db)):
     db.commit()
     return {"status": "reading_logged"}
 
+
+@router.post("/api/switch")
+def switch_breaker(breaker_id: str, state: str):
+    if state not in ["true", "false"]:
+        raise HTTPException(status_code=400, detail="Invalid state: must be 'true' or 'false'")
+
+    payload = {
+        "id": breaker_id,
+        "state": state
+    }
+
+    try:
+        publish.single(
+            topic="smartbreaker/control",
+            payload=json.dumps(payload),
+            hostname="bbe5ab48ebc248ef8d25d63ffc55c86d.s1.eu.hivemq.cloud",
+            port=8883,
+            auth={
+                'username': 'testuser',
+                'password': 'TestPassword123'
+            },
+            tls=ssl.create_default_context()
+        )
+        return {"message": f"Sent {state} command to breaker {breaker_id}"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"MQTT publish failed: {e}")
+    
 @app.get("/breaker/{breaker_id}/readings")
 def get_readings(breaker_id: int, db: Session = Depends(get_db)):
     return db.query(PowerReading).filter_by(breaker_id=breaker_id).order_by(PowerReading.timestamp.desc()).limit(100).all()
