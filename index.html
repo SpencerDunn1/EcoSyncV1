@@ -315,16 +315,23 @@
       const section = document.getElementById(`breaker-${id}`);
       section.classList.add('loading');
 
-      fetch(`${BACKEND_URL}/breaker/${id}/${turnOn ? 'on' : 'off'}`, {
+      fetch(`${BACKEND_URL}/switch`, {
         method: "POST",
-        headers: { "x-api-key": API_KEY }
+        headers: { 
+          "Content-Type": "application/json",
+          "x-api-key": API_KEY 
+        },
+        body: JSON.stringify({
+          breaker_id: id.toString(),
+          state: turnOn.toString()
+        })
       })
       .then(res => {
         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
         return res.json();
       })
       .then(data => {
-        console.log("Breaker toggled:", data.status);
+        console.log("Breaker toggled:", data.message);
         updateStatus(id);
       })
       .catch(err => {
