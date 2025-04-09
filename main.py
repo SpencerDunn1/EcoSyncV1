@@ -152,11 +152,11 @@ async def switch_breaker(request: Request):
         publish.single(
             topic="smartbreaker/control",
             payload=json.dumps(payload),
-            hostname="your-cluster.s2.eu.hivemq.cloud",
+            hostname="bbe5ab48ebc248ef8d25d63ffc55c86d.s1.eu.hivemq.cloud",
             port=8883,
             auth={
-                'username': 'your-mqtt-username',
-                'password': 'your-mqtt-password'
+                'username': 'testuser',
+                'password': 'TestPassword123'
             },
             tls=ssl.create_default_context()
         )
