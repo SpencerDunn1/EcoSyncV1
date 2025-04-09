@@ -10,14 +10,15 @@ import os
 import threading
 import json
 import ssl
-
-
-
-
 from db import get_db, SessionLocal
 from models import PowerReading, BreakerAction
 from auth import get_current_user
 from users import router as user_router
+from pydantic import BaseModel
+
+class SwitchRequest(BaseModel):
+    breaker_id: str
+    state: str  # expects "true" or "false" as strings
 
 app = FastAPI()
 router = APIRouter()
@@ -135,10 +136,9 @@ def log_reading(breaker_id: int, data: dict, db: Session = Depends(get_db)):
 
 
 @app.post("/switch")
-async def switch_breaker(request: Request):
-    data = await request.json()
-    breaker_id = data.get("breaker_id")
-    state = data.get("state")
+async def switch_breaker(req: SwitchRequest):
+    breaker_id = req.breaker_id
+    state = req.state
 
     if state not in ["true", "false"]:
         raise HTTPException(status_code=400, detail="State must be 'true' or 'false'")
